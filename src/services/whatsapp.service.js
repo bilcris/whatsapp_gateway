@@ -45,6 +45,16 @@ function getClient(sessionId = 'default') {
     return clients.get(sessionId);
 }
 
+async function sendTextMessage(sessionId, number, message) {
+    const sock = clients.get(sessionId);
+    if (!sock) {
+        throw new Error('Session not found or not connected');
+    }
+
+    const jid = number.includes('@s.whatsapp.net') ? number: `${number}@s.whatsapp.net`;
+    await sock.sendMessage(jid, { text: message});
+}
+
 module.exports = {
-    createSession, getClient,
+    createSession, getClient, sendTextMessage,
 };
