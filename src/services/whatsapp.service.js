@@ -112,5 +112,5 @@ async function sendMedia(sessionId, number, fileUrl, caption = '', mediaType = '
 }
 
 module.exports = {
-    createSession, getClient, sendTextMessage, sendMedia,
+    createSession, getClient, clients, sendTextMessage, sendMedia,
 };
