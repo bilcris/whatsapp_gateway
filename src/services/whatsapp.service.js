@@ -18,6 +18,8 @@ async function createSession(sessionId = 'default') {
         auth: state,
     });
 
+    clients.set(sessionId, sock);
+
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
@@ -26,21 +28,20 @@ async function createSession(sessionId = 'default') {
             qrcode.generate(qr, { small: true});
         }
         if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode;
+            const reason = lastDisconnect?.error?.output?.statusCode || null;
             if (reason !== DisconnectReason.loggedOut){
-                console.log(`Reconnection ${sessionId}...`);
-                createSession(sessionId);
+                console.log(`Reconnection ${sessionId} in 5s...`);
+                setTimeout(() => createSession(sessionId), 5000);
             } else {
                 console.log(` Session ${sessionId} logged out`);
                 clients.delete(sessionId);
             }
         } else if (connection === 'open') {
             console.log(`Sessions ${sessionId} connected`);
-            clients.set(sessionId, sock);
         }
     });
 
-    sock.ev.on('messages.upsert', async ({ message, type }) => {
+    sock.ev.on('messages.upsert', async ({ messages }) => {
         const webhookUrl = process.env.WEBHOOK_URL;
         if (!messages || messages.length === 0 || !webhookUrl) return;
 
@@ -48,7 +49,7 @@ async function createSession(sessionId = 'default') {
             if (!msg.message || msg.key.fromMe) continue;
             const payload = {
                 sessionId,
-                from: msg.key.remoteJid,
+                send: msg.key.remoteJid || msg.key.participant,
                 message: msg.message,
                 timestamp: msg.messageTimestamp,
             }
@@ -57,7 +58,7 @@ async function createSession(sessionId = 'default') {
                 await axios.post(webhookUrl, payload);
                 console.log(` Pesan diteruskan ke webhook untuk session ${sessionId}`);
             } catch (err) {
-                console.err(` Gagal kirim pesan ke webhook: `, err.message);
+                console.error(` Gagal kirim pesan ke webhook: `, err.message);
             }
         }
     });
@@ -71,36 +72,47 @@ function getClient(sessionId = 'default') {
 
 async function sendTextMessage(sessionId, number, message) {
     const sock = clients.get(sessionId);
-    if (!sock) {
-        throw new Error('Session not found or not connected');
-    }
+    if (!sock) throw new Error('Session not found');
+    if (!sock.user) throw new Error('Session not connected to WhatsApp')
 
     const jid = number.includes('@s.whatsapp.net') ? number: `${number}@s.whatsapp.net`;
-    await sock.sendMessage(jid, { text: message});
+    try {
+        await sock.sendMessage(jid, { text: message});
+    } catch (err) {
+        console.error(`Gagak mengirim pesan: ${err.message}`);
+        throw err;
+    }
 }
 
 async function sendMedia(sessionId, number, fileUrl, caption = '', mediaType = 'document') {
     const sock = clients.get(sessionId);
-    if (!sock) throw new Error('Session tidak ditemukan');
+    if (!sock) throw new Error('Session not found');
+    if (!sock.user) throw new Error('Session not connected to WhatsApp')
 
     const response = await axios.get(fileUrl, { responseType: 'arraybuffer'});
     const buffer = Buffer.from(response.data, 'binary');
-    const message = {};
+    let message;
     const jid = number.includes('@s.whatsapp.net') ? number : `${number}@s.whatsapp.net`;
 
     switch (mediaType) {
         case 'image':
-            message.image = buffer;
+            message = { image : buffer };
             break;
         case 'video':
-            message.video = buffer;
+            message = {video: buffer };
             break;
         case 'audio':
-            message.audio = buffer;
+            message = { 
+                audio : buffer,
+                mimetype : 'audio/ogg; codecs=opus'
+             };
             break;
         default:
-            message.document = buffer;
-            message.fileName = fileUrl.split('/').pop();
+            message = { 
+                document : buffer,
+                fileName : fileUrl.split('/').pop(),
+                mimetype : mime.lookup(message.fileName) || 'application/octet-stream'
+            }
             break;
     }
 
