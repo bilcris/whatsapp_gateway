@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, downloadContentFromMessage } = require('@whiskeysockets/baileys');
 
 const path = require('path');
@@ -41,9 +42,13 @@ async function createSession(sessionId = 'default') {
         }
     });
 
-    sock.ev.on('messages.upsert', async ({ messages }) => {
+    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+        console.log(`[${sessionId}] Menerima ${messages?.length || 0} pesan, type: ${type}`);
+
         const webhookUrl = process.env.WEBHOOK_URL;
-        if (!messages || messages.length === 0 || !webhookUrl) return;
+        if (!messages || messages.length === 0 || !webhookUrl) {
+            console.warn(`[${sessionId}] Tidak ada pesan atau WEBHOOK_URL belum disetel`);
+        }
 
         for (const msg of messages) {
             if (!msg.message || msg.key.fromMe) continue;
