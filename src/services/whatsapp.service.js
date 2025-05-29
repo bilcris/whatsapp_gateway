@@ -2,6 +2,8 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLat
 
 const path = require('path');
 const qrcode = require('qrcode-terminal');
+const axios = require('axios');
+const { timeStamp } = require('console');
 
 const clients = new Map(); // Map sessionId -> socket
 
@@ -35,6 +37,28 @@ async function createSession(sessionId = 'default') {
         } else if (connection === 'open') {
             console.log(`Sessions ${sessionId} connected`);
             clients.set(sessionId, sock);
+        }
+    });
+
+    sock.ev.on('messages.upsert', async ({ message, type }) => {
+        const webhookUrl = process.env.WEBHOOK_URL;
+        if (!messages || messages.length === 0 || !webhookUrl) return;
+
+        for (const msg of messages) {
+            if (!msg.message || msg.key.fromMe) continue;
+            const payload = {
+                sessionId,
+                from: msg.key.remoteJid,
+                message: msg.message,
+                timeStamp: msg.messageTimestamp,
+            }
+
+            try {
+                await axios.post(webhookUrl, payload);
+                console.log(` Pesan diteruskan ke webhook untuk session ${sessionId}`);
+            } catch (err) {
+                console.err(` Gagal kirim pesan ke webhook: `, err.message);
+            }
         }
     });
 
