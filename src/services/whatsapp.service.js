@@ -1,9 +1,9 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, downloadContentFromMessage } = require('@whiskeysockets/baileys');
 
 const path = require('path');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
-const { timeStamp } = require('console');
+const mime = require('mime-types');
 
 const clients = new Map(); // Map sessionId -> socket
 
@@ -50,7 +50,7 @@ async function createSession(sessionId = 'default') {
                 sessionId,
                 from: msg.key.remoteJid,
                 message: msg.message,
-                timeStamp: msg.messageTimestamp,
+                timestamp: msg.messageTimestamp,
             }
 
             try {
@@ -79,6 +79,38 @@ async function sendTextMessage(sessionId, number, message) {
     await sock.sendMessage(jid, { text: message});
 }
 
+async function sendMedia(sessionId, number, fileUrl, caption = '', mediaType = 'document') {
+    const sock = clients.get(sessionId);
+    if (!sock) throw new Error('Session tidak ditemukan');
+
+    const response = await axios.get(fileUrl, { responseType: 'arraybuffer'});
+    const buffer = Buffer.from(response.data, 'binary');
+    const message = {};
+    const jid = number.includes('@s.whatsapp.net') ? number : `${number}@s.whatsapp.net`;
+
+    switch (mediaType) {
+        case 'image':
+            message.image = buffer;
+            break;
+        case 'video':
+            message.video = buffer;
+            break;
+        case 'audio':
+            message.audio = buffer;
+            break;
+        default:
+            message.document = buffer;
+            message.fileName = fileUrl.split('/').pop();
+            break;
+    }
+
+    if (caption) {
+        message.caption = caption;
+    }
+
+    await sock.sendMessage(jid, message);
+}
+
 module.exports = {
-    createSession, getClient, sendTextMessage,
+    createSession, getClient, sendTextMessage, sendMedia,
 };
