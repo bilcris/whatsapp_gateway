@@ -1,5 +1,7 @@
 const { error } = require('qrcode-terminal');
 const { sendTextMessage, sendMedia, sendMediaFromUpload } = require('../services/whatsapp.service');
+const Session = require('../models/Session');
+const axios = require('axios');
 
 async function send(req, res) {
     const { sessionId = 'default', number, message } = req.body;
@@ -47,4 +49,36 @@ async function sendMediaUpload(req, res) {
     }
 }
 
-module.exports = { send, sendMediaMessage, sendMediaUpload, }
+const handleIncomingMessages = async(sessionId, { messages, type }) => {
+    console.log(`[${sessionId}] Menerima ${messages?.length || 0} pesan, type: ${type}}`);
+
+    if (!messages || messages === 0) return;
+
+    const session = await Session.findOne({ sessionId });
+    const webhookUrl = session?.webhookUrl;
+
+    if (!webhookUrl) {
+        console.warn(`[${sessionId}] Webhook belum disetel`);
+        return;
+    }
+
+    for (const msg of messages) {
+        if (!msg.message || msg.key.fromMe) continue;
+
+        const payload = {
+            sessionId,
+            from: msg.key.remoteJid,
+            message: msg.message,
+            timestamp: msg.messageTimestamp,
+        };
+
+        try {
+            await axios.post(webhookUrl, payload);
+            console.log(`Pesan diteruskan ke webhook untuk session ${sessionId}`);
+        } catch (err) {
+            console.error(`Gagal kirim ke webhook: `, err.message);
+        }
+    }
+};
+
+module.exports = { send, sendMediaMessage, sendMediaUpload, handleIncomingMessages, }

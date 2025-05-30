@@ -1,4 +1,5 @@
 const { createSession, getClient, clients, setSessionWebhook } = require('../services/whatsapp.service');
+const Session = require('../models/Session');
 
 async function create(req, res) {
     const sessionId = req.body.sessionId || 'default';
@@ -45,7 +46,13 @@ const setSesionWebhook = (req, res) => {
     if (!webhookUrl) {
         return res.status(400).json({ error: 'webhookUrl diperlukan'});
     }
-    setSessionWebhook(sessionId, webhookUrl);
+
+    await Session.findOneAndUpdate(
+        { sessionId },
+        { webhookUrl },
+        { upsert: true, new: true }
+    );
+    // setSessionWebhook(sessionId, webhookUrl);
     res.json({ message: `Webhook untuk session ${sessionId} disimpan.`});
 };
 

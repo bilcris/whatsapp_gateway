@@ -10,6 +10,8 @@ const clients = new Map(); // Map sessionId -> socket
 
 const webhookMap = new Map();
 
+const { handleIncomingMessages } = require('../controllers/message.controller');
+
 async function createSession(sessionId = 'default') {
     const authFolder = path.join(__dirname, '..', 'sessions', sessionId);
     const { state, saveCreds } = await useMultiFileAuthState(authFolder);
@@ -43,33 +45,8 @@ async function createSession(sessionId = 'default') {
             console.log(`Sessions ${sessionId} connected`);
         }
     });
-
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        console.log(`[${sessionId}] Menerima ${messages?.length || 0} pesan, type: ${type}`);
-
-        const webhookUrl = getSessionWebhook(sessionId);
-        if (!messages || messages.length === 0 || !webhookUrl) {
-            console.warn(`[${sessionId}] Tidak ada pesan atau WEBHOOK_URL belum disetel`);
-            return;
-        }
-
-        for (const msg of messages) {
-            if (!msg.message || msg.key.fromMe) continue;
-            const payload = {
-                sessionId,
-                send: msg.key.remoteJid || msg.key.participant,
-                message: msg.message,
-                timestamp: msg.messageTimestamp,
-            }
-
-            try {
-                await axios.post(webhookUrl, payload);
-                console.log(` Pesan diteruskan ke webhook untuk session ${sessionId}`);
-            } catch (err) {
-                console.error(` Gagal kirim pesan ke webhook: `, err.message);
-            }
-        }
-    });
+    
+    sock.ev.on('messages.upsert', (msg) => handleIncomingMessages(sessionId, msg));
 
     return sock;
 }
