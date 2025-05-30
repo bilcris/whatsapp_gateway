@@ -7,7 +7,7 @@ router.get('/', sessionController.listSessions);
 router.delete('/:sessionId', sessionController.deleteSession);
 router.post('/webhook', sessionController.setSesionWebhook);
 router.put('/webhook', sessionController.updateSessionWebhook);
-router.delete('/:sessionId/webhook', sessionController.deleteSession);
-router.get('/:sessionId/webhook', sessionController.getSessionWebhook);
+router.delete('/webhook/:sessionId', sessionController.deleteSession);
+router.get('/webhook/:sessionId', sessionController.getSessionWebhook);
 
 module.exports = router;

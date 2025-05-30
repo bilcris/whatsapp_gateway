@@ -14,16 +14,25 @@ async function create(req, res) {
 }
 
 async function listSessions(req, res) {
-    const list = [];
-    for (const [sessionId, sock] of clients.entries()) {
-        const isConnected = sock?.user ? true : false;
-        list.push({
-            sessionId,
-            isConnected,
-            user: sock?.user || null,
+    try {
+        const sessions = await Session.find().lean();
+        const result = sessions.map((session) => {
+            const sock = clients.get(session.sessionId);
+            return {
+                sessionId: session.sessionId,
+                isConnected: !!sock?.user,
+                user: sock?.user || session.user || null,
+                webhookUrl: session.webhookUrl || null,
+                status: sock?.user ? 'connected' : 'disconnected',
+                updateAt: session.updateAt,
+            };
         });
+
+        res.json(result);
+    } catch (err) {
+        console.error('Gagal mengambil daftar session:', err);
+        res.status(500).json({ error: 'Gagal mengambil daftar session' });
     }
-    res.json(list);
 }
 
 async function deleteSession(req, res) {
