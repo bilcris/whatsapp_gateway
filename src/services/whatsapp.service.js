@@ -11,6 +11,7 @@ const clients = new Map(); // Map sessionId -> socket
 const webhookMap = new Map();
 
 const { handleIncomingMessages } = require('../controllers/message.controller');
+const Session = require('../models/Session');
 
 async function createSession(sessionId = 'default') {
     const authFolder = path.join(__dirname, '..', 'sessions', sessionId);
@@ -27,7 +28,7 @@ async function createSession(sessionId = 'default') {
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', (update) => {
+    sock.ev.on('connection.update', async(update) => {
         const { connection, lastDisconnect, qr } = update;
         if (qr) {
             qrcode.generate(qr, { small: true});
@@ -43,6 +44,20 @@ async function createSession(sessionId = 'default') {
             }
         } else if (connection === 'open') {
             console.log(`Sessions ${sessionId} connected`);
+            
+            const user = sock.user;
+            await Session.findOneAndUpdate(
+                { sessionId },
+                { sessionId,
+                    status: 'connected',
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        pushname: user.name || '',
+                    },
+                },
+                { upsert: true }
+            );
         }
     });
     

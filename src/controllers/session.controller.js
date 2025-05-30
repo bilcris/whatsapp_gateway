@@ -41,7 +41,7 @@ async function deleteSession(req, res) {
     }
 }
 
-const setSesionWebhook = (req, res) => {
+const setSesionWebhook = async (req, res) => {
     const { sessionId = 'default', webhookUrl } = req.body;
     if (!webhookUrl) {
         return res.status(400).json({ error: 'webhookUrl diperlukan'});

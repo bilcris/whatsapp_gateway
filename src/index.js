@@ -11,6 +11,9 @@ const { createSession } = require('./services/whatsapp.service');
 const { error } = require('console');
 const sessionDir = path.join(__dirname, 'sessions');
 
+const connectDB = require('./config/db');
+connectDB();
+
 const app = express();
 const PORT = process.env.PORT || 5000
 
