@@ -1,4 +1,3 @@
-const { error } = require('qrcode-terminal');
 const { sendTextMessage, sendMedia, sendMediaFromUpload } = require('../services/whatsapp.service');
 const Session = require('../models/Session');
 const axios = require('axios');
