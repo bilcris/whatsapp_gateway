@@ -8,6 +8,8 @@ const mime = require('mime-types');
 
 const clients = new Map(); // Map sessionId -> socket
 
+const webhookMap = new Map();
+
 async function createSession(sessionId = 'default') {
     const authFolder = path.join(__dirname, '..', 'sessions', sessionId);
     const { state, saveCreds } = await useMultiFileAuthState(authFolder);
@@ -45,9 +47,10 @@ async function createSession(sessionId = 'default') {
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         console.log(`[${sessionId}] Menerima ${messages?.length || 0} pesan, type: ${type}`);
 
-        const webhookUrl = process.env.WEBHOOK_URL;
+        const webhookUrl = getSessionWebhook(sessionId);
         if (!messages || messages.length === 0 || !webhookUrl) {
             console.warn(`[${sessionId}] Tidak ada pesan atau WEBHOOK_URL belum disetel`);
+            return;
         }
 
         for (const msg of messages) {
@@ -113,9 +116,10 @@ async function sendMedia(sessionId, number, fileUrl, caption = '', mediaType = '
              };
             break;
         default:
+            const fileName = fileUrl.split('/').pop();
             message = { 
                 document : buffer,
-                fileName : fileUrl.split('/').pop(),
+                fileName : fileName,
                 mimetype : mime.lookup(message.fileName) || 'application/octet-stream'
             }
             break;
@@ -156,8 +160,8 @@ async function sendMediaFromUpload(sessionId, number, file, caption = '', mediaT
         default:
             message = { 
                 document : buffer,
-                fileName : fileUrl.split('/').pop(),
-                mimetype : mime.lookup(message.fileName) || 'application/octet-stream'
+                fileName : fileName,
+                mimetype : mimeType || 'application/octet-stream'
             }
             break;
     }
@@ -167,6 +171,14 @@ async function sendMediaFromUpload(sessionId, number, file, caption = '', mediaT
 
 }
 
+function setSessionWebhook(sessionId, url) {
+    webhookMap.set(sessionId, url);
+}
+
+function getSessionWebhook(sessionId) {
+    return webhookMap.get(sessionId);
+}
+
 module.exports = {
-    createSession, getClient, clients, sendTextMessage, sendMedia, sendMediaFromUpload,
+    createSession, getClient, clients, sendTextMessage, sendMedia, sendMediaFromUpload, setSessionWebhook, getSessionWebhook,
 };

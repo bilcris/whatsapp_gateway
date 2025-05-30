@@ -1,4 +1,4 @@
-const { createSession, getClient, clients } = require('../services/whatsapp.service');
+const { createSession, getClient, clients, setSessionWebhook } = require('../services/whatsapp.service');
 
 async function create(req, res) {
     const sessionId = req.body.sessionId || 'default';
@@ -40,4 +40,13 @@ async function deleteSession(req, res) {
     }
 }
 
-module.exports = { create, listSessions, deleteSession, }
+const setSesionWebhook = (req, res) => {
+    const { sessionId = 'default', webhookUrl } = req.body;
+    if (!webhookUrl) {
+        return res.status(400).json({ error: 'webhookUrl diperlukan'});
+    }
+    setSessionWebhook(sessionId, webhookUrl);
+    res.json({ message: `Webhook untuk session ${sessionId} disimpan.`});
+};
+
+module.exports = { create, listSessions, deleteSession, setSesionWebhook, }
