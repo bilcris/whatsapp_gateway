@@ -1,4 +1,4 @@
-const { sendTextMessage, sendMedia, sendMediaFromUpload } = require('../services/whatsapp.service');
+const { sendTextMessage, sendMedia, sendMediaFromUpload } = require('../services/message.service');
 const Session = require('../models/Session');
 const axios = require('axios');
 
