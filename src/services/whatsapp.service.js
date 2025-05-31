@@ -5,6 +5,8 @@ const path = require('path');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 const mime = require('mime-types');
+const { access, rm } = require('fs/promises');
+const { constants } = require('fs');
 
 const clients = new Map(); // Map sessionId -> socket
 
@@ -41,6 +43,20 @@ async function createSession(sessionId = 'default') {
             } else {
                 console.log(` Session ${sessionId} logged out`);
                 clients.delete(sessionId);
+                await Session.deleteOne({ sessionId });
+                const sessionFolder = path.join(__dirname,'../sessions/',sessionId);
+                try {
+                    await access(sessionFolder, constants.F_OK)
+
+                    await rm(sessionFolder, { recursive: true, force: true });
+                    console.log('Folder berhasil dihapus');
+                } catch (err) {
+                    if (err.code === 'ENOENT') {
+                        console.log('Folder tidak ditemukan, tidak perlu dihapus');
+                    } else {
+                        console.error('Gagal menghapus folder: ', err);
+                    }
+                }
             }
         } else if (connection === 'open') {
             console.log(`Sessions ${sessionId} connected`);

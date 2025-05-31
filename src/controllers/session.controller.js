@@ -2,9 +2,10 @@ const { createSession, getClient, clients, setSessionWebhook } = require('../ser
 const Session = require('../models/Session');
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 async function create(req, res) {
-    const sessionId = req.body.sessionId || 'default';
+    const sessionId = uuidv4(); // req.body.sessionId || 'default';
 
     try {
         await createSession(sessionId);
@@ -48,10 +49,6 @@ async function deleteSession(req, res) {
         await sock.logout();
         clients.delete(sessionId);
         await Session.deleteOne({ sessionId });
-        const sessionFolder = path.join(__dirname, '../sessions', sessionId);
-        if (fs.existsSync(sessionFolder)) {
-            fs.rmSync(sessionFolder, { recursive: true, force: ture });
-        }
         res.json({ message: `Session ${sessionId} berhasil dihapus` });
     } catch (err) {
         res.status(500).json({ error: 'Failed to logout session' });
