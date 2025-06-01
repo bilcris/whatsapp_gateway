@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+ <html lang="en">
+     <head>
+     <meta charset="UTF-8">
+ <title>Scan QR WhatsApp</title>
+ </head>
+ <body>
+     <h1>Scan QR WhatsApp</h1>
+ <button onclick="generateSession()">Buat Session & Tampilkan QR</button>
+ <div id="output"></div>
+ <script> async function generateSession() { const res = await fetch('http://localhost:5000/sessions', { method: 'POST' }); const data = await res.json(); if (data.qr) { const img = document.createElement('img'); img.src = 'https://api.qrserver.com/v1/create-qr-code/?data=' + encodeURIComponent(data.qr) + '&size=200x200'; document.getElementById('output').innerHTML = ''; document.getElementById('output').appendChild(img); } else { document.getElementById('output').innerText = 'Gagal mendapatkan QR'; } } </script>
+ </body>
+ </html>

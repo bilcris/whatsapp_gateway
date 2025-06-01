@@ -15,14 +15,14 @@ const webhookMap = new Map();
 const { handleIncomingMessages } = require('../controllers/message.controller');
 const Session = require('../models/Session');
 
-async function createSession(sessionId = 'default') {
+async function createSession(sessionId, onQR) {
     const authFolder = path.join(__dirname, '..', 'sessions', sessionId);
     const { state, saveCreds } = await useMultiFileAuthState(authFolder);
     const { version } = await fetchLatestBaileysVersion();
 
     const sock = makeWASocket({
         version,
-        printQRInTerminal: true,
+        printQRInTerminal: false,
         auth: state,
     });
 
@@ -32,8 +32,9 @@ async function createSession(sessionId = 'default') {
 
     sock.ev.on('connection.update', async(update) => {
         const { connection, lastDisconnect, qr } = update;
-        if (qr) {
-            qrcode.generate(qr, { small: true});
+        if (qr && typeof onQR === 'function') {
+            // qrcode.generate(qr, { small: true});
+            onQR(qr);
         }
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode || null;

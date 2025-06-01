@@ -37,7 +37,11 @@ fsPromises.readdir(sessionDir).then(sessionIds => {
 app.use('/sessions', sessionRoutes);
 app.use('/messages', messageRoutes);
 
-app.get('/', (req, res) => res.send('WhatsApp Gateway API Aktif'));
+app.use(express.static('public'));
+
+app.use(express.static(path.join(__dirname, 'views')));
+
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html')));
 
 app.listen(PORT, () => {
     console.log(`Server berjalan di http://localhost:${PORT}`)

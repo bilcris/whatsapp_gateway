@@ -8,8 +8,19 @@ async function create(req, res) {
     const sessionId = uuidv4(); // req.body.sessionId || 'default';
 
     try {
-        await createSession(sessionId);
-        res.status(200).json({ message: 'Sesi dibuat, scan QR di terminal', sessionId });
+        const qrPromise = new Promise((resolve, reject) => {
+            createSession(sessionId, (qr) => {
+                if (qr) resolve(qr);
+                else reject(new Error('QR not received'));
+            });
+        });
+        const qrCode = await qrPromise;
+        return res.json({
+            sessionId,
+            qr: qrCode,
+        });
+        // await createSession(sessionId);
+        // res.status(200).json({ message: 'Sesi dibuat, scan QR di terminal', sessionId });
     } catch (error) {
         console.log('Gagal membuat sesi: ', error);
         res.status(500).json({ error: 'Gagal membuat sesi WhatsApp'});
