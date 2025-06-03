@@ -26,10 +26,17 @@ if (!fs.existsSync(sessionDir)) {
 }
 
 
-fsPromises.readdir(sessionDir).then(sessionIds => {
-    sessionIds.forEach(sessionId => {
-        createSession(sessionId).catch(err => console.error(`Gagal load session ${sessionId}`, err.message));
-    });
+fsPromises.readdir(sessionDir).then(async (sessionIds) => {
+    for (const sessionId of sessionIds) {
+        try {
+            await createSession(sessionId);
+            console.log(`Session ${sessionId} berhasil dipulihkan.`);
+        } catch (err) {
+            console.log(`Gagal memuat sesi ${sessionId}: ${err.message}`);
+            await cleanupSession(sessionId);
+            console.log(`Sesi ${sessionId} berhasil dihapus.`)
+        }
+    }
 }).catch(err => {
     console.error('Gagal membaca directori sessions: ', err.message);
 })

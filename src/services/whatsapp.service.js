@@ -8,12 +8,15 @@ const mime = require('mime-types');
 const { access, rm } = require('fs/promises');
 const { constants } = require('fs');
 
-const clients = new Map(); // Map sessionId -> socket
+// const clients = new Map(); // Map sessionId -> socket
+const clients = require('./clients');
 
 const webhookMap = new Map();
 
 const { handleIncomingMessages } = require('../controllers/message.controller');
 const Session = require('../models/Session');
+
+const { cleanupSession } = require('./session.service');
 
 async function createSession(sessionId, onQR) {
     const authFolder = path.join(__dirname, '..', 'sessions', sessionId);
@@ -30,6 +33,8 @@ async function createSession(sessionId, onQR) {
 
     sock.ev.on('creds.update', saveCreds);
 
+    let connected = false;
+
     sock.ev.on('connection.update', async(update) => {
         const { connection, lastDisconnect, qr } = update;
         if (qr && typeof onQR === 'function') {
@@ -41,27 +46,18 @@ async function createSession(sessionId, onQR) {
             if (reason !== DisconnectReason.loggedOut){
                 console.log(`Reconnection ${sessionId} in 5s...`);
                 setTimeout(() => createSession(sessionId), 5000);
-            } else {
+            }
+            else if (!connected){
+                console.log(`QR timeout for session ${sessionId}, cleaning_up`);
+                await cleanupSession(sessionId);
+            } 
+            else {
                 console.log(` Session ${sessionId} logged out`);
-                clients.delete(sessionId);
-                await Session.deleteOne({ sessionId });
-                const sessionFolder = path.join(__dirname,'../sessions/',sessionId);
-                try {
-                    await access(sessionFolder, constants.F_OK)
-
-                    await rm(sessionFolder, { recursive: true, force: true });
-                    console.log('Folder berhasil dihapus');
-                } catch (err) {
-                    if (err.code === 'ENOENT') {
-                        console.log('Folder tidak ditemukan, tidak perlu dihapus');
-                    } else {
-                        console.error('Gagal menghapus folder: ', err);
-                    }
-                }
+                await cleanupSession(sessionId);
             }
         } else if (connection === 'open') {
             console.log(`Sessions ${sessionId} connected`);
-            
+            connected = true;
             const user = sock.user;
             await Session.findOneAndUpdate(
                 { sessionId },

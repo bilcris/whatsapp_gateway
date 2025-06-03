@@ -49,27 +49,26 @@ async function sendMediaUpload(req, res) {
 }
 
 const handleIncomingMessages = async(sessionId, { messages, type }) => {
-    console.log(`[${sessionId}] Menerima ${messages?.length || 0} pesan, type: ${type}}`);
-
-    if (!messages || messages === 0) return;
+    if (!Array.isArray(messages) || messages.length === 0) return;
 
     const session = await Session.findOne({ sessionId });
     const webhookUrl = session?.webhookUrl;
-
     if (!webhookUrl) {
         console.warn(`[${sessionId}] Webhook belum disetel`);
         return;
     }
 
+    
     for (const msg of messages) {
-        if (!msg.message || msg.key.fromMe) continue;
-
+        if (!msg.message || msg.key?.fromMe) continue;
+        
         const payload = {
             sessionId,
             from: msg.key.remoteJid,
             message: msg.message,
             timestamp: msg.messageTimestamp,
         };
+
 
         try {
             await axios.post(webhookUrl, payload);
